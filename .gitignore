@@ -1,0 +1,21 @@
+# Questa compiled libraries
+osvvm_spacewire/
+spacewire_light/
+spacewire_tb/
+work/
+VHDL_LIBS/
+
+# OSVVM temporary files and reports
+OsvvmTemp_*/
+ValidatedResults/
+
+# Questa configuration and output
+modelsim.ini
+transcript
+*.wlf
+*.log
+
+# Editor and temporary files
+.vscode/
+*~
+*.bak
