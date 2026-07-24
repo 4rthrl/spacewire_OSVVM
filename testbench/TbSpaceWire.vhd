@@ -213,6 +213,25 @@ architecture TestHarness of TbSpaceWire is
   signal MonBAPacketActive : std_logic;
 
   ------------------------------------------------------------------
+  -- TIME-CODE SUPPORT REQUIRED BY TbSpaceWire_Traffic1.vhd
+  ------------------------------------------------------------------
+  signal TickInA  : std_logic := '0';
+  signal CtrlInA  : std_logic_vector(1 downto 0) := (others => '0');
+  signal TimeInA  : std_logic_vector(5 downto 0) := (others => '0');
+
+  signal TickOutA : std_logic;
+  signal CtrlOutA : std_logic_vector(1 downto 0);
+  signal TimeOutA : std_logic_vector(5 downto 0);
+
+  signal TickInB  : std_logic := '0';
+  signal CtrlInB  : std_logic_vector(1 downto 0) := (others => '0');
+  signal TimeInB  : std_logic_vector(5 downto 0) := (others => '0');
+
+  signal TickOutB : std_logic;
+  signal CtrlOutB : std_logic_vector(1 downto 0);
+  signal TimeOutB : std_logic_vector(5 downto 0);
+
+  ------------------------------------------------------------------
   -- TestCtrl component declaration
   --
   -- TestCtrl_e.vhd defines this interface.
@@ -254,7 +273,23 @@ architecture TestHarness of TbSpaceWire is
       MonBAFlag         : in std_logic;
       MonBAData         : in std_logic_vector(7 downto 0);
       MonBASynchronized : in std_logic;
-      MonBAPacketActive : in std_logic
+      MonBAPacketActive : in std_logic;
+
+      TickInA : out std_logic;
+      CtrlInA : out std_logic_vector(1 downto 0);
+      TimeInA : out std_logic_vector(5 downto 0);   
+
+      TickOutA : in std_logic;
+      CtrlOutA : in std_logic_vector(1 downto 0);
+      TimeOutA : in std_logic_vector(5 downto 0);
+
+      TickInB : out std_logic;
+      CtrlInB : out std_logic_vector(1 downto 0);
+      TimeInB : out std_logic_vector(5 downto 0);
+
+      TickOutB : in std_logic;
+      CtrlOutB : in std_logic_vector(1 downto 0);
+      TimeOutB : in std_logic_vector(5 downto 0)
 
 
     );
@@ -509,9 +544,10 @@ begin
       --
       -- Not used in the first testbench version.
       ------------------------------------------------------------
-      tick_in => '0',
-      ctrl_in => "00",
-      time_in => "000000",
+      
+      tick_in  => TickInA,
+      ctrl_in  => CtrlInA,
+      time_in  => TimeInA,
 
       ------------------------------------------------------------
       -- Application transmit FIFO interface
@@ -527,10 +563,9 @@ begin
       --
       -- Not used in the first testbench version.
       ------------------------------------------------------------
-      tick_out => open,
-      ctrl_out => open,
-      time_out => open,
-
+      tick_out => TickOutA,
+      ctrl_out => CtrlOutA,
+      time_out => TimeOutA,
       ------------------------------------------------------------
       -- Application receive FIFO interface
       ------------------------------------------------------------
@@ -603,9 +638,9 @@ begin
       ------------------------------------------------------------
       -- Time-code transmit interface
       ------------------------------------------------------------
-      tick_in => '0',
-      ctrl_in => "00",
-      time_in => "000000",
+      tick_in  => TickInB,
+      ctrl_in  => CtrlInB,
+      time_in  => TimeInB,
 
       ------------------------------------------------------------
       -- Application transmit FIFO interface
@@ -619,9 +654,9 @@ begin
       ------------------------------------------------------------
       -- Time-code receive interface
       ------------------------------------------------------------
-      tick_out => open,
-      ctrl_out => open,
-      time_out => open,
+      tick_out => TickOutB,
+      ctrl_out => CtrlOutB,
+      time_out => TimeOutB,
 
       ------------------------------------------------------------
       -- Application receive FIFO interface
@@ -704,7 +739,24 @@ begin
       MonBAFlag         => MonBAFlag,
       MonBAData         => MonBAData,
       MonBASynchronized => MonBASynchronized,
-      MonBAPacketActive => MonBAPacketActive
+      MonBAPacketActive => MonBAPacketActive,
+
+      TickInA  => TickInA,
+      CtrlInA  => CtrlInA,
+      TimeInA  => TimeInA,
+
+      TickOutA => TickOutA,
+      CtrlOutA => CtrlOutA,
+      TimeOutA => TimeOutA,
+
+      TickInB  => TickInB,
+      CtrlInB  => CtrlInB,
+      TimeInB  => TimeInB,
+
+      TickOutB => TickOutB,
+      CtrlOutB => CtrlOutB,
+      TimeOutB => TimeOutB
+
     );
 
 end architecture TestHarness;

@@ -11,35 +11,23 @@ library osvvm_spacewire;
   use osvvm_spacewire.SpaceWireTbPkg.all;
 
 
+--------------------------------------------------------------------
+-- Common test-controller interface used by all test architectures.
+--------------------------------------------------------------------
 entity TestCtrl is
   port (
-    ------------------------------------------------------------
-    -- Testbench clock and reset
-    ------------------------------------------------------------
     Clk    : in std_logic;
     nReset : in std_logic;
 
-    ------------------------------------------------------------
-    -- Node A transaction interfaces
-    ------------------------------------------------------------
     SpwTxRecA : inout SpaceWireRecType;
     SpwRxRecA : inout SpaceWireRecType;
 
-    ------------------------------------------------------------
-    -- Node B transaction interfaces
-    ------------------------------------------------------------
     SpwTxRecB : inout SpaceWireRecType;
     SpwRxRecB : inout SpaceWireRecType;
 
-    ------------------------------------------------------------
-    -- SpaceWire link status
-    ------------------------------------------------------------
     RunningA : in std_logic;
     RunningB : in std_logic;
 
-    ------------------------------------------------------------
-    -- SpaceWire error indications
-    ------------------------------------------------------------
     ErrorDisconnectA : in std_logic;
     ErrorParityA     : in std_logic;
     ErrorEscapeA     : in std_logic;
@@ -50,23 +38,41 @@ entity TestCtrl is
     ErrorEscapeB     : in std_logic;
     ErrorCreditB     : in std_logic;
 
-    ----------------------------------------------------------------
-    -- Passive A-to-B Data/Strobe monitor
-    ----------------------------------------------------------------
     MonABValid        : in std_logic;
     MonABFlag         : in std_logic;
     MonABData         : in std_logic_vector(7 downto 0);
     MonABSynchronized : in std_logic;
     MonABPacketActive : in std_logic;
 
-    ----------------------------------------------------------------
-    -- Passive B-to-A Data/Strobe monitor
-    ----------------------------------------------------------------
     MonBAValid        : in std_logic;
     MonBAFlag         : in std_logic;
     MonBAData         : in std_logic_vector(7 downto 0);
     MonBASynchronized : in std_logic;
-    MonBAPacketActive : in std_logic
-  );
+    MonBAPacketActive : in std_logic;
 
+    --------------------------------------------------------------
+    -- Node A time-code transmit and receive interfaces
+    --
+    -- Defaults keep older tests safe when their architectures do
+    -- not explicitly drive time-code requests.
+    --------------------------------------------------------------
+    TickInA : out std_logic := '0';
+    CtrlInA : out std_logic_vector(1 downto 0) := (others => '0');
+    TimeInA : out std_logic_vector(5 downto 0) := (others => '0');
+
+    TickOutA : in std_logic;
+    CtrlOutA : in std_logic_vector(1 downto 0);
+    TimeOutA : in std_logic_vector(5 downto 0);
+
+    --------------------------------------------------------------
+    -- Node B time-code transmit and receive interfaces
+    --------------------------------------------------------------
+    TickInB : out std_logic := '0';
+    CtrlInB : out std_logic_vector(1 downto 0) := (others => '0');
+    TimeInB : out std_logic_vector(5 downto 0) := (others => '0');
+
+    TickOutB : in std_logic;
+    CtrlOutB : in std_logic_vector(1 downto 0);
+    TimeOutB : in std_logic_vector(5 downto 0)
+  );
 end entity TestCtrl;

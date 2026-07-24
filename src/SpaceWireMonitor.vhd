@@ -210,9 +210,19 @@ end process Initialize;
     variable PreviousSymbolData : std_logic_vector(7 downto 0) :=
       (others => '0');
 
+    -- Overall parity statistics for all decoded symbols.
     variable ParityOkay       : boolean := true;
     variable ParityCheckCount : natural := 0;
     variable ParityErrorCount : natural := 0;
+
+    -- Parity statistics for DATA characters in the current packet.
+    variable PacketDataParityChecks : natural := 0;
+    variable PacketDataParityErrors : natural := 0;
+
+    -- Indicates whether the previously decoded DATA symbol belongs
+    -- to the packet payload. This is false for ESC + DATA broadcasts.
+    variable PreviousWasPacketData : boolean := false;
+
 
     variable EscapePending : boolean := false;
     variable InPacket      : boolean := false;
@@ -221,11 +231,7 @@ end process Initialize;
     variable NullCount     : natural := 0;
     variable FctCount      : natural := 0;
 
-    -- Snapshot counters at packet start so the packet summary can
-    -- report the parity result for its data characters.
-    variable PacketParityStartChecks : natural := 0;
-    variable PacketParityStartErrors : natural := 0;
-
+    
 
     --------------------------------------------------------------
     -- Emit one decoded N-Char to the external checker process.
@@ -299,10 +305,10 @@ end process Initialize;
 
       if CHECK_PARITY then
         PacketChecks :=
-          ParityCheckCount - PacketParityStartChecks;
+          PacketDataParityChecks;
 
         PacketErrors :=
-          ParityErrorCount - PacketParityStartErrors;
+          PacketDataParityErrors;
 
         if PacketErrors = 0 then
             write(
@@ -343,10 +349,11 @@ end process Initialize;
       PreviousPayloadXor   := '0';
       PreviousSymbolKind   := SYMBOL_UNKNOWN;
       PreviousSymbolData   := (others => '0');
-      ParityCheckCount     := 0;
-      ParityErrorCount     := 0;
-      PacketParityStartChecks := 0;
-      PacketParityStartErrors := 0;
+      ParityCheckCount        := 0;
+      ParityErrorCount        := 0;
+      PacketDataParityChecks  := 0;
+      PacketDataParityErrors  := 0;
+      PreviousWasPacketData   := false;
       EscapePending        := false;
       InPacket             := false;
       PacketLength         := 0;
@@ -412,8 +419,9 @@ end process Initialize;
               SyncShift          := (others => '0');
               SyncBitCount       := 0;
               BitIndex           := 0;
-              EscapePending      := false;
-              PreviousSymbolKind := SYMBOL_UNKNOWN;
+              EscapePending        := false;
+              PreviousSymbolKind   := SYMBOL_UNKNOWN;
+              PreviousWasPacketData := false;
 
             else
               ReceivedBit := DataIn;
@@ -444,9 +452,10 @@ end process Initialize;
 
                   -- The final complete character in the first NULL
                   -- is FCT, with payload bits "00".
-                  PreviousPayloadXor := '0';
-                  PreviousSymbolKind := SYMBOL_FCT;
-                  PreviousSymbolData := (others => '0');
+                  PreviousPayloadXor   := '0';
+                  PreviousSymbolKind   := SYMBOL_FCT;
+                  PreviousSymbolData   := (others => '0');
+                  PreviousWasPacketData := false;
 
                   Log(
                     ModelID,
@@ -476,47 +485,61 @@ end process Initialize;
                     CurrentControl := ReceivedBit;
 
                     if CHECK_PARITY then
-                        ParityOkay :=
-                            (PreviousPayloadXor xor
-                            CurrentParity xor
-                            ReceivedBit) = '1';
+                      ParityOkay :=
+                        (
+                          PreviousPayloadXor xor
+                          CurrentParity xor
+                          ReceivedBit
+                        ) = '1';
 
-                        if InPacket and
-                            PreviousSymbolKind = SYMBOL_DATA then
+                      ------------------------------------------------------------
+                      -- Count every symbol parity check globally.
+                      ------------------------------------------------------------
+                      ParityCheckCount := ParityCheckCount + 1;
 
-                            PacketDataParityChecks :=
-                            PacketDataParityChecks + 1;
-
-                            if not ParityOkay then
-                            PacketDataParityErrors :=
-                                PacketDataParityErrors + 1;
-                            end if;
-                        end if;
+                      ------------------------------------------------------------
+                      -- Count the check in the packet summary only when the
+                      -- previous symbol was a normal packet DATA character.
+                      ------------------------------------------------------------
+                      if PreviousWasPacketData then
+                        PacketDataParityChecks :=
+                          PacketDataParityChecks + 1;
 
                         if not ParityOkay then
-                            ParityErrorCount := ParityErrorCount + 1;
-
-                            Alert(
-                            ModelID,
-                            "PARITY ERROR for " &
-                            SymbolToString(
-                                PreviousSymbolKind,
-                                PreviousSymbolData
-                            ),
-                            ERROR
-                            );
-
-                        elsif LOG_PARITY_RESULTS then
-                            Log(
-                            ModelID,
-                            "PARITY OK for " &
-                            SymbolToString(
-                                PreviousSymbolKind,
-                                PreviousSymbolData
-                            ),
-                            INFO
-                            );
+                          PacketDataParityErrors :=
+                            PacketDataParityErrors + 1;
                         end if;
+                      end if;
+
+                      ------------------------------------------------------------
+                      -- Report errors for all symbol types, including DATA,
+                      -- control characters, FCTs and broadcasts.
+                      ------------------------------------------------------------
+                      if not ParityOkay then
+                        ParityErrorCount :=
+                          ParityErrorCount + 1;
+
+                        Alert(
+                          ModelID,
+                          "PARITY ERROR for " &
+                          SymbolToString(
+                            PreviousSymbolKind,
+                            PreviousSymbolData
+                          ),
+                          ERROR
+                        );
+
+                      elsif LOG_PARITY_RESULTS then
+                        Log(
+                          ModelID,
+                          "PARITY OK for " &
+                          SymbolToString(
+                            PreviousSymbolKind,
+                            PreviousSymbolData
+                          ),
+                          INFO
+                        );
+                      end if;
                     end if;
 
                     BitIndex := 2;
@@ -542,6 +565,8 @@ end process Initialize;
                           ----------------------------------------
                           -- ESC + DATA = broadcast code.
                           ----------------------------------------
+                          PreviousWasPacketData := false;
+
                           Log(
                             ModelID,
                             "BROADCAST code 0x" &
@@ -567,16 +592,14 @@ end process Initialize;
                           ----------------------------------------
                           -- Normal packet data.
                           ----------------------------------------
+                          PreviousWasPacketData := true;
                           if not InPacket then
                             InPacket     := true;
                             PacketLength := 0;
                             PacketActive <= '1';
 
-                            PacketParityStartChecks :=
-                              ParityCheckCount;
-
-                            PacketParityStartErrors :=
-                              ParityErrorCount;
+                            PacketDataParityChecks := 0;
+                            PacketDataParityErrors := 0;
 
                             Log(
                               ModelID,
@@ -627,6 +650,7 @@ end process Initialize;
                         PreviousPayloadXor :=
                           ControlValue(0) xor ControlValue(1);
 
+                        PreviousWasPacketData := false;
                         BitIndex := 0;
 
                         case ControlValue is
