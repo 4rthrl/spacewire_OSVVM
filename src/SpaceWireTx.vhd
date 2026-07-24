@@ -192,7 +192,7 @@ begin
             "SEND queueing: " & to_string(TxStim) &
             "  Operation # " &
             to_string(TransmitRequestCount + 1),
-            INFO,
+            DEBUG,
             Enable => TransRec.BoolToModel
           );
 

@@ -197,6 +197,20 @@ architecture TestHarness of TbSpaceWire is
   signal SpwDataInB    : std_logic;
   signal SpwStrobeInB  : std_logic;
 
+  ------------------------------------------------------------------
+  -- Passive A-to-B & B-to-A SpaceWire monitor outputs
+  ------------------------------------------------------------------
+  signal MonABValid        : std_logic;
+  signal MonABFlag         : std_logic;
+  signal MonABData         : std_logic_vector(7 downto 0);
+  signal MonABSynchronized : std_logic;
+  signal MonABPacketActive : std_logic;
+
+  signal MonBAValid        : std_logic;
+  signal MonBAFlag         : std_logic;
+  signal MonBAData         : std_logic_vector(7 downto 0);
+  signal MonBASynchronized : std_logic;
+  signal MonBAPacketActive : std_logic;
 
   ------------------------------------------------------------------
   -- TestCtrl component declaration
@@ -228,7 +242,21 @@ architecture TestHarness of TbSpaceWire is
       ErrorDisconnectB : in std_logic;
       ErrorParityB     : in std_logic;
       ErrorEscapeB     : in std_logic;
-      ErrorCreditB     : in std_logic
+      ErrorCreditB     : in std_logic;
+
+      MonABValid        : in std_logic;
+      MonABFlag         : in std_logic;
+      MonABData         : in std_logic_vector(7 downto 0);
+      MonABSynchronized : in std_logic;
+      MonABPacketActive : in std_logic;
+
+      MonBAValid        : in std_logic;
+      MonBAFlag         : in std_logic;
+      MonBAData         : in std_logic_vector(7 downto 0);
+      MonBASynchronized : in std_logic;
+      MonBAPacketActive : in std_logic
+
+
     );
   end component TestCtrl;
 
@@ -374,6 +402,61 @@ begin
       RxData   => RxDataB
     );
 
+  ------------------------------------------------------------------
+  -- Passive monitor for traffic transmitted from Node A to Node B
+  --
+  -- The monitor only observes the signals. It does not drive or
+  -- modify the SpaceWire connection.
+  ------------------------------------------------------------------
+  MonitorAB : entity osvvm_spacewire.SpaceWireMonitor
+    generic map (
+      MONITOR_NAME          => "Monitor_A_to_B",
+      MAX_PACKET_BYTES      => 256,
+
+      LOG_DATA_CHARACTERS   => false,
+      LOG_LINK_CHARACTERS   => false,
+
+      CHECK_PARITY          => true,
+      LOG_PARITY_RESULTS    => false,
+      LOG_PACKET_SUMMARY    => true
+    )
+    port map (
+      nReset   => nReset,
+      DataIn   => SpwDataOutA,
+      StrobeIn => SpwStrobeOutA,
+
+      MonValid => MonABValid,
+      MonFlag  => MonABFlag,
+      MonData  => MonABData,
+
+      Synchronized => MonABSynchronized,
+      PacketActive => MonABPacketActive
+    );
+
+  MonitorBA : entity osvvm_spacewire.SpaceWireMonitor
+    generic map (
+      MONITOR_NAME          => "Monitor_B_to_A",
+      MAX_PACKET_BYTES      => 256,
+
+      LOG_DATA_CHARACTERS   => false,
+      LOG_LINK_CHARACTERS   => false,
+
+      CHECK_PARITY          => true,
+      LOG_PARITY_RESULTS    => false,
+      LOG_PACKET_SUMMARY    => true
+    )
+    port map (
+      nReset   => nReset,
+      DataIn   => SpwDataOutB,
+      StrobeIn => SpwStrobeOutB,
+
+      MonValid => MonBAValid,
+      MonFlag  => MonBAFlag,
+      MonData  => MonBAData,
+
+      Synchronized => MonBASynchronized,
+      PacketActive => MonBAPacketActive
+    );
 
   ------------------------------------------------------------------
   -- SpaceWire Light core A
@@ -609,7 +692,19 @@ begin
       ErrorDisconnectB => ErrorDisconnectB,
       ErrorParityB     => ErrorParityB,
       ErrorEscapeB     => ErrorEscapeB,
-      ErrorCreditB     => ErrorCreditB
+      ErrorCreditB     => ErrorCreditB,
+
+      MonABValid        => MonABValid,
+      MonABFlag         => MonABFlag,
+      MonABData         => MonABData,
+      MonABSynchronized => MonABSynchronized,
+      MonABPacketActive => MonABPacketActive,
+
+      MonBAValid        => MonBAValid,
+      MonBAFlag         => MonBAFlag,
+      MonBAData         => MonBAData,
+      MonBASynchronized => MonBASynchronized,
+      MonBAPacketActive => MonBAPacketActive
     );
 
 end architecture TestHarness;

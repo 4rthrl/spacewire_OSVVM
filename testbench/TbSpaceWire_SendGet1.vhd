@@ -48,7 +48,7 @@ begin
     SetTestName("TbSpaceWire_SendGet1");
 
     -- Show successful checks in the transcript
-    SetLogEnable(PASSED, TRUE);
+    SetLogEnable(PASSED, FALSE);
 
     --------------------------------------------------------------
     -- Allow verification components to initialize

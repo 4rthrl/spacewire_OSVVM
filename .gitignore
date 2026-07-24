@@ -19,3 +19,19 @@ transcript
 .vscode/
 *~
 *.bak
+# Questa generated files
+transcript
+vsim.wlf
+*.wlf
+work/
+spacewire_tb/
+osvvm_spacewire/
+
+# OSVVM generated reports and scripts
+OsvvmSimRun.tcl
+index.html
+index.yml
+*_RunDemoTests/
+
+# Temporary files created during report generation
+etch*

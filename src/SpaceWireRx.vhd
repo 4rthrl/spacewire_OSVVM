@@ -89,6 +89,12 @@ begin
   begin
     ID := NewID(MODEL_INSTANCE_NAME);
 
+    SetLogEnable(
+      ID,
+      PASSED,
+      false
+    );
+
     ModelID <= ID;
 
     ReceiveFifo <= NewID(
@@ -296,8 +302,7 @@ begin
                   ModelID,
                   "Received: " & to_string(RxStim) &
                   ". Operation # " & to_string(ReceiveCount),
-                  TransRec.BoolToModel or
-                    IsLogEnabled(ModelID, INFO)
+                  Enable => TransRec.BoolToModel
                 );
 
               else
@@ -320,7 +325,7 @@ begin
                 ModelID,
                 "GET returning: " & to_string(RxStim) &
                 ". Operation # " & to_string(ReceiveCount),
-                INFO,
+                DEBUG,
                 Enable => TransRec.BoolToModel
               );
 

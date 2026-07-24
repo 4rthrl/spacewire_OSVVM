@@ -9,6 +9,7 @@ library osvvm_common;
 
 library osvvm_spacewire;
   use osvvm_spacewire.SpaceWireTbPkg.all;
+  use osvvm_spacewire.ScoreboardPkg_SpaceWire.all;
 
 
 --------------------------------------------------------------------
@@ -39,7 +40,7 @@ architecture Packets1 of TestCtrl is
   -- Directed packets
   ------------------------------------------------------------------
   constant PacketA1 : SpaceWirePacketType := (
-  0 => x"55"
+    0 => x"55"
   );
 
   constant PacketA2 : SpaceWirePacketType := (
@@ -71,7 +72,16 @@ architecture Packets1 of TestCtrl is
     PacketB2'length + 1;
 
   ------------------------------------------------------------------
-  -- Barrier shared by the control, TX, and RX processes.
+  -- Expected A-to-B N-Chars are pushed here by the TX process.
+  -- Actual N-Chars decoded from Data/Strobe are checked by the
+  -- passive monitor checker process.
+  ------------------------------------------------------------------
+  signal MonitorABScoreboard : ScoreboardIDType;
+
+  signal MonitorBAScoreboard : ScoreboardIDType;
+
+  ------------------------------------------------------------------
+  -- Barrier shared by control, TX, RX, and monitor checker.
   ------------------------------------------------------------------
   signal TestDone : integer_barrier := 1;
 
@@ -87,7 +97,15 @@ begin
   begin
 
     SetTestName("TbSpaceWire_Packets1");
-    SetLogEnable(PASSED, TRUE);
+    SetLogEnable(PASSED, FALSE);
+
+    MonitorABScoreboard <= NewID(
+      "Monitor_A_to_B_Scoreboard"
+    );
+
+    MonitorBAScoreboard <= NewID(
+      "Monitor_B_to_A_Scoreboard"
+    );
 
     wait for 0 ns;
 
@@ -116,7 +134,33 @@ begin
       5 ms
     );
 
+    AffirmIf(
+      IsEmpty(MonitorABScoreboard),
+      "Monitor A-to-B scoreboard is empty"
+    );
+
+    AffirmIfEqual(
+      GetCheckCount(MonitorABScoreboard),
+      A_TO_B_TRANSACTION_COUNT,
+      "Monitor A-to-B scoreboard check count"
+    );
+
+    AffirmIf(
+      IsEmpty(MonitorBAScoreboard),
+      "Monitor B-to-A scoreboard is empty"
+    );
+
+    AffirmIfEqual(
+      GetCheckCount(MonitorBAScoreboard),
+      B_TO_A_TRANSACTION_COUNT,
+      "Monitor B-to-A scoreboard check count"
+    );
+
     TranscriptClose;
+
+    osvvm_spacewire.ScoreboardPkg_SpaceWire.WriteScoreboardYaml(
+      FileName => "SpaceWire"
+    );
 
     EndOfTestReports(
       TimeOut => (now >= 5 ms)
@@ -141,6 +185,48 @@ begin
     variable TransactionCount : integer;
     variable ErrorCount       : integer;
 
+    --------------------------------------------------------------
+    -- Queue one expected packet in the passive monitor scoreboard.
+    --------------------------------------------------------------
+    procedure PushExpectedPacket(
+      constant Scoreboard : in ScoreboardIDType;
+      constant Packet     : in SpaceWirePacketType;
+      constant Ending     : in SpaceWirePacketEndType
+    ) is
+      variable Expected : SpaceWireStimType;
+    begin
+      --------------------------------------------------------------
+      -- Queue every expected packet data character.
+      --------------------------------------------------------------
+      for Index in Packet'range loop
+        Expected.Data := Packet(Index);
+        Expected.Flag := (others => '0');
+
+        Push(
+          Scoreboard,
+          Expected
+        );
+      end loop;
+
+      --------------------------------------------------------------
+      -- Queue the expected packet terminator.
+      --------------------------------------------------------------
+      Expected.Flag := (others => '1');
+
+      case Ending is
+        when PACKET_EOP =>
+          Expected.Data := x"00";
+
+        when PACKET_EEP =>
+          Expected.Data := x"01";
+      end case;
+
+      Push(
+        Scoreboard,
+        Expected
+      );
+    end procedure PushExpectedPacket;
+
   begin
 
     GetAlertLogID(
@@ -156,13 +242,13 @@ begin
     SetLogEnable(
       SpwTxAID,
       INFO,
-      TRUE
+      FALSE
     );
 
     SetLogEnable(
       SpwTxBID,
       INFO,
-      TRUE
+      FALSE
     );
 
     wait until nReset = '1';
@@ -185,6 +271,11 @@ begin
       INFO
     );
 
+    PushExpectedPacket(
+      MonitorABScoreboard,
+      PacketA1,
+      PACKET_EOP
+    );
     SendPacket(
       SpwTxRecA,
       PacketA1,
@@ -194,6 +285,12 @@ begin
     Log(
       "TX: Sending PacketA2 from Node A to Node B: 8 bytes, EEP",
       INFO
+    );
+
+    PushExpectedPacket(
+      MonitorABScoreboard,
+      PacketA2,
+      PACKET_EEP
     );
 
     SendPacket(
@@ -239,6 +336,13 @@ begin
       INFO
     );
 
+    PushExpectedPacket(
+      MonitorBAScoreboard,
+      PacketB1,
+      PACKET_EOP
+    );
+
+
     SendPacket(
       SpwTxRecB,
       PacketB1,
@@ -248,6 +352,12 @@ begin
     Log(
       "TX: Sending PacketB2 from Node B to Node A: 16 bytes, EEP",
       INFO
+    );
+
+    PushExpectedPacket(
+      MonitorBAScoreboard,
+      PacketB2,
+      PACKET_EEP
     );
 
     SendPacket(
@@ -292,6 +402,57 @@ begin
 
 
   ------------------------------------------------------------------
+  -- SpaceWireMonitorABScoreboardProc
+  --
+  -- Converts the passive monitor output into SpaceWireStimType and
+  -- compares each actual decoded N-Char against the expected FIFO.
+  ------------------------------------------------------------------
+  SpaceWireMonitorABScoreboardProc : process
+    variable Actual : SpaceWireStimType;
+  begin
+    wait until nReset = '1';
+
+    for OperationNumber in 1 to A_TO_B_TRANSACTION_COUNT loop
+      wait until MonABValid = '1';
+
+      Actual.Data := MonABData;
+      Actual.Flag := (others => MonABFlag);
+
+      Check(
+        MonitorABScoreboard,
+        Actual
+      );
+    end loop;
+
+    WaitForBarrier(TestDone);
+    wait;
+
+  end process SpaceWireMonitorABScoreboardProc;
+
+  SpaceWireMonitorBAScoreboardProc : process
+    variable Actual : SpaceWireStimType;
+  begin 
+    wait until nReset = '1';
+
+    for OperationNumber in 1 to B_TO_A_TRANSACTION_COUNT loop
+      wait until MonBAValid = '1';
+
+      Actual.Data := MonBAData;
+      Actual.Flag := (others => MonBAFlag);
+
+      Check(
+        MonitorBAScoreboard,
+        Actual
+      );
+    end loop;
+
+    WaitForBarrier(TestDone);
+    wait;
+
+  end process SpaceWireMonitorBAScoreboardProc;
+
+
+  ------------------------------------------------------------------
   -- SpaceWireTbRxProc
   --
   -- Checks the four complete packets using CheckPacket.
@@ -319,13 +480,13 @@ begin
     SetLogEnable(
       SpwRxAID,
       INFO,
-      TRUE
+      FALSE
     );
 
     SetLogEnable(
       SpwRxBID,
       INFO,
-      TRUE
+      FALSE
     );
 
     wait until nReset = '1';

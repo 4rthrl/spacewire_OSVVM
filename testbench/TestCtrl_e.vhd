@@ -48,7 +48,25 @@ entity TestCtrl is
     ErrorDisconnectB : in std_logic;
     ErrorParityB     : in std_logic;
     ErrorEscapeB     : in std_logic;
-    ErrorCreditB     : in std_logic
+    ErrorCreditB     : in std_logic;
+
+    ----------------------------------------------------------------
+    -- Passive A-to-B Data/Strobe monitor
+    ----------------------------------------------------------------
+    MonABValid        : in std_logic;
+    MonABFlag         : in std_logic;
+    MonABData         : in std_logic_vector(7 downto 0);
+    MonABSynchronized : in std_logic;
+    MonABPacketActive : in std_logic;
+
+    ----------------------------------------------------------------
+    -- Passive B-to-A Data/Strobe monitor
+    ----------------------------------------------------------------
+    MonBAValid        : in std_logic;
+    MonBAFlag         : in std_logic;
+    MonBAData         : in std_logic_vector(7 downto 0);
+    MonBASynchronized : in std_logic;
+    MonBAPacketActive : in std_logic
   );
 
 end entity TestCtrl;
