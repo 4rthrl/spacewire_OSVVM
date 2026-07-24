@@ -9,3 +9,4 @@ library spacewire_tb
 
 # Analyze and run the configuration in this file
 RunTest ./testbench/TbSpaceWire_SendGet1.vhd
+RunTest ./testbench/TbSpaceWire_Packets1.vhd

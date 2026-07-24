@@ -43,6 +43,17 @@ package SpaceWireTbPkg is
   end record;
 
   ------------------------------------------------------------------
+  -- packet type for a SpaceWire packet
+  ------------------------------------------------------------------
+  type SpaceWirePacketType is array (natural range <>) of
+  std_logic_vector(7 downto 0);
+
+  type SpaceWirePacketEndType is (
+  PACKET_EOP,
+  PACKET_EEP
+  );
+
+  ------------------------------------------------------------------
   -- Printing and comparing
   ------------------------------------------------------------------
   function to_string (
@@ -81,6 +92,18 @@ package SpaceWireTbPkg is
 
   procedure CheckEep (
     signal TransactionRec : inout SpaceWireRecType
+  );
+
+  procedure SendPacket(
+  signal   TransRec : inout SpaceWireRecType;
+  constant Packet   : in    SpaceWirePacketType;
+  constant Ending   : in    SpaceWirePacketEndType := PACKET_EOP
+  );
+
+  procedure CheckPacket(
+  signal   TransRec : inout SpaceWireRecType;
+  constant Packet   : in    SpaceWirePacketType;
+  constant Ending   : in    SpaceWirePacketEndType := PACKET_EOP
   );
 
 end package SpaceWireTbPkg;
@@ -169,5 +192,43 @@ package body SpaceWireTbPkg is
   begin
     Check(TransactionRec, SPW_EEP_DATA, SPW_CONTROL_FLAG);
   end procedure CheckEep;
+
+  procedure SendPacket(
+  signal   TransRec : inout SpaceWireRecType;
+  constant Packet   : in    SpaceWirePacketType;
+  constant Ending   : in    SpaceWirePacketEndType := PACKET_EOP
+  ) is
+  begin
+    for Index in Packet'range loop
+      SendData(TransRec, Packet(Index));
+    end loop;
+
+    case Ending is
+      when PACKET_EOP =>
+        SendEop(TransRec);
+
+      when PACKET_EEP =>
+        SendEep(TransRec);
+    end case;
+  end procedure;
+
+  procedure CheckPacket(
+  signal   TransRec : inout SpaceWireRecType;
+  constant Packet   : in    SpaceWirePacketType;
+  constant Ending   : in    SpaceWirePacketEndType := PACKET_EOP
+  ) is
+  begin
+    for Index in Packet'range loop
+      CheckData(TransRec, Packet(Index));
+    end loop;
+
+    case Ending is
+      when PACKET_EOP =>
+        CheckEop(TransRec);
+
+      when PACKET_EEP =>
+        CheckEep(TransRec);
+    end case;
+  end procedure;
 
 end package body SpaceWireTbPkg;
