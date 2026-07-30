@@ -35,3 +35,15 @@ index.yml
 
 # Temporary files created during report generation
 etch*
+# OSVVM individual test output
+TbSpaceWireMonitor_Errors1/
+TbSpaceWireMonitor_Valid1/
+
+# OSVVM build output
+spacewire-osvvm_build/
+spacewire-osvvm_compile_only/
+OsvvmTemp_QuestaSim/
+
+# Temporary generated files
+etch*
+kk5ef1ea9d2b47

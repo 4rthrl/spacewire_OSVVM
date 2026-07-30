@@ -11,3 +11,7 @@ library spacewire_tb
 RunTest ./testbench/TbSpaceWire_SendGet1.vhd
 RunTest ./testbench/TbSpaceWire_Packets1.vhd
 RunTest ./testbench/TbSpaceWire_Traffic1.vhd
+
+
+RunTest ./testbench/TbSpaceWireMonitor_Valid1.vhd
+RunTest ./testbench/TbSpaceWireMonitor_Errors1.vhd

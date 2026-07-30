@@ -26,10 +26,16 @@ analyze ./src/SpaceWireTx.vhd
 analyze ./src/SpaceWireRx.vhd
 analyze ./src/SpaceWireMonitor.vhd
 
+# Direct Data/Strobe driver for monitor unit tests
+analyze ./src/SpaceWireDsDriverPkg.vhd
+
 # --------------------------------------------------------------------------
 # Testbench harness and directed tests
 # --------------------------------------------------------------------------
 library spacewire_tb
 
 analyze ./testbench/TestCtrl_e.vhd
+analyze ./testbench/MonitorTestCtrl_e.vhd
+
 analyze ./testbench/TbSpaceWire.vhd
+analyze ./testbench/TbSpaceWireMonitor.vhd
